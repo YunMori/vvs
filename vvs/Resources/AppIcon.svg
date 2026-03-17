@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2e1a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2d1f0e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f1f0f;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="codeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4caf50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#81c784;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffcc44;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e6a817;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 배경 -->
+  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#bgGrad)"/>
+
+  <!-- 배경 테두리 -->
+  <rect width="1024" height="1024" rx="220" ry="220"
+        fill="none" stroke="#3a5a2a" stroke-width="6" opacity="0.4"/>
+
+  <!-- 왼쪽 꺾쇠 < -->
+  <polyline points="310,320 170,512 310,704"
+            fill="none"
+            stroke="url(#codeGrad)"
+            stroke-width="72"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            filter="url(#glow)"/>
+
+  <!-- 오른쪽 꺾쇠 > -->
+  <polyline points="714,320 854,512 714,704"
+            fill="none"
+            stroke="url(#codeGrad)"
+            stroke-width="72"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            filter="url(#glow)"/>
+
+  <!-- 슬래시 / -->
+  <line x1="580" y1="290" x2="444" y2="734"
+        stroke="url(#codeGrad)"
+        stroke-width="56"
+        stroke-linecap="round"
+        opacity="0.85"
+        filter="url(#glow)"/>
+
+  <!-- 번개 볼트 (오른쪽 하단 오버레이) -->
+  <polygon points="720,560 660,690 700,690 640,820 780,660 738,660"
+           fill="url(#boltGrad)"
+           filter="url(#glow)"
+           opacity="0.95"/>
+</svg>
