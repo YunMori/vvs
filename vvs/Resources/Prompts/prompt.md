@@ -29,7 +29,7 @@ Carefully read the problem image and identify:
 - Write a **complete, standalone program** (include all imports and main entry point)
 - Use stdin/stdout I/O
 - Language-specific I/O optimization:
-  - **Python**: Use `input()` and `print()` ONLY. Do NOT use sys, fileinput, or any other I/O method.
+  - **Python**: Use Python 3.7. Use `input()` and `print()` ONLY. Do NOT use sys, fileinput, or any other I/O method.
   - **Java**: Use `BufferedReader` + `StringTokenizer` + `StringBuilder`
   - **C++**: Add `ios_base::sync_with_stdio(false); cin.tie(NULL);`
 - Watch for integer overflow in Java/C++ (use long/long long when needed)
@@ -38,7 +38,7 @@ Carefully read the problem image and identify:
 - Write only the **Solution class** with the exact method signature from the problem
 - Do NOT include main functions, test code, or unnecessary imports
 - Language-specific optimizations:
-  - **Python**: Use built-in collections (defaultdict, heapq, deque) when appropriate
+  - **Python**: Use Python 3.7. Use built-in collections (defaultdict, heapq, deque) when appropriate
   - **Java**: Prefer ArrayDeque over Stack, use int[] over Integer[] for performance
   - **C++**: Use unordered_map/unordered_set for O(1) average lookups
 

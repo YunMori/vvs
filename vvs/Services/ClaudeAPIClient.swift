@@ -446,7 +446,7 @@ final class ClaudeAPIClient: @unchecked Sendable {
         4. Verify against all provided examples before writing code.
 
         ## Code Rules
-        - If Baekjoon: complete standalone program, stdin/stdout, Python uses input() and print() ONLY (no sys or other I/O), Java uses BufferedReader, C++ uses ios_base::sync_with_stdio(false)
+        - If Baekjoon: complete standalone program, stdin/stdout, Python 3.7 uses input() and print() ONLY (no sys or other I/O), Java uses BufferedReader, C++ uses ios_base::sync_with_stdio(false)
         - If LeetCode: Solution class only, exact method signature, no main function
 
         ## Output Format
