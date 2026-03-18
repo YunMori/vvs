@@ -511,6 +511,9 @@ final class MenuBarController: NSObject {
                 }
             } catch {
                 self.updateState(.error(error.localizedDescription))
+                await MainActor.run {
+                    ToastPanel.show(message: "캡처 오류: \(error.localizedDescription)")
+                }
                 await self.resetStateAfterDelay()
             }
         }
@@ -581,6 +584,9 @@ final class MenuBarController: NSObject {
             } catch {
                 CaptureSessionManager.shared.reset()
                 self.updateState(.error(error.localizedDescription))
+                await MainActor.run {
+                    ToastPanel.show(message: "풀이 오류: \(error.localizedDescription)")
+                }
                 await self.resetStateAfterDelay()
             }
         }
