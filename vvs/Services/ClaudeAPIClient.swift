@@ -257,41 +257,63 @@ final class ClaudeAPIClient: @unchecked Sendable {
     // MARK: - 프롬프트 템플릿 로드
 
     func loadPromptTemplate() -> String {
-        guard let url = Bundle.main.url(forResource: "prompt", withExtension: "md", subdirectory: "Prompts"),
+        guard let url = Bundle.main.url(forResource: "prompt", withExtension: "md"),
               let content = try? String(contentsOf: url, encoding: .utf8)
         else {
-            return defaultPrompt() // 번들 로드 실패 시 인라인 fallback
+            print("[ClaudeAPIClient] ⚠️ prompt.md 번들 로드 실패 → fallback 프롬프트 사용")
+            return defaultPrompt()
         }
+        print("[ClaudeAPIClient] ✅ prompt.md 번들 로드 성공 (\(url.path))")
         return content
     }
 
     private func defaultPrompt() -> String {
         // prompt.md 번들 로드 실패 시 사용하는 인라인 fallback
         return """
-        You are a Competitive Programming Grandmaster. Solve the coding problem shown in the image.
+        당신은 세계 최고 수준의 알고리즘 문제 해결(Competitive Programming) 전문가입니다. 당신의 목표는 단 한 번의 제출로 모든 테스트 케이스를 통과하는 무결점의 최적화된 코드를 작성하는 것입니다.
 
-        ## Algorithm Design
-        1. Derive allowed complexity from constraints (N≤10⁶ → O(N log N), N≤10⁴ → O(N²), etc.)
-        2. Select optimal algorithm and state why in one line.
-        3. Check edge cases: N=1, N=max, empty input, negatives, overflow.
-        4. Verify against all provided examples before writing code.
+        아래의 엄격한 프로세스와 [절대 규칙]을 반드시 준수하여 코드를 작성하세요.
 
-        ## Code Rules
-        - Look at the image to determine the problem format:
-          - If the problem uses stdin/stdout (e.g. Baekjoon/BOJ style): write a complete standalone program with main entry point
-          - If the problem uses a Solution class with a method signature (e.g. LeetCode style): write only the Solution class with the exact method signature, no main function
-        - Python 3.7: use input() and print() ONLY for standalone programs (no sys or other I/O)
-        - Java standalone: use BufferedReader + StringTokenizer + StringBuilder
-        - C++ standalone: add ios_base::sync_with_stdio(false); cin.tie(NULL);
+        ## 1단계 — 문제 완벽 파악
+        제공된 이미지나 텍스트를 주의 깊게 분석하고 다음을 확인하세요:
+        - 시간 제한 및 메모리 제한 (알고리즘 제약의 기준점)
+        - 정확한 입출력 형식 및 타입
+        - 모든 변수의 제약 조건 (N의 범위, 최댓값/최솟값 등)
+        - 예제 테스트 케이스의 입출력 패턴
 
-        ## Code Style
-        - NO comments of any kind — no inline comments, no block comments, no docstrings. Zero.
+        ## 2단계 — 알고리즘 및 자료구조 설계
+        1. **시간 복잡도 예산 산정**: 주어진 N의 제약 조건에 맞춰 허용되는 최대 시간 복잡도를 도출하세요.
+        - N ≤ 10⁸ → O(N) 또는 O(N log N)
+        - N ≤ 10⁶ → O(N log N)
+        - N ≤ 10⁴ → O(N²)
+        - N ≤ 500 → O(N³)
+        2. **최적의 알고리즘 선택**: 산정된 예산 내에서 동작하는 가장 효율적인 알고리즘과 자료구조를 확정하세요.
+        3. **엣지 케이스 검증**: N=1, 최댓값, 빈 입력, 음수, 자료형 오버플로우, 중복 데이터 등의 예외 상황을 설계에 반영하세요.
 
-        ## Output Format
-        ```(language)
-        (complete solution — no omissions)
-        ```
-        Brief explanation with time/space complexity after the code block.
+        ## 3단계 — 코드 작성 및 언어별 최적화
+        문제의 요구 방식을 파악하고 알맞은 구조로만 작성하세요. 
+
+        ### [중요] Python I/O 절대 규칙 (위반 시 오답 처리됨)
+        - **`import sys` 사용을 엄격히 금지합니다.**
+        - 입력은 반드시 파이썬 기본 내장 함수인 `input()`만을 사용해야 합니다. 
+        - `sys.stdin.readline`, `sys.setrecursionlimit` 등 sys 모듈과 관련된 어떠한 코드도 절대 포함하지 마세요.
+        - Python 버전은 3.7을 기준으로 작성합니다.
+
+        ### A. 독립 실행 프로그램 (stdin/stdout 방식)
+        - 모든 import(허용된 것만) 및 실행 진입점을 포함한 완전한 코드를 작성하세요.
+        - **Java**: `BufferedReader`, `StringTokenizer`, `StringBuilder`를 사용하여 I/O 병목을 제거하세요.
+        - **C++**: `main` 함수 최상단에 `ios_base::sync_with_stdio(false); cin.tie(NULL);`를 반드시 포함하세요.
+
+        ### B. Solution 클래스 방식 (LeetCode, Programmers 등)
+        - 문제에 제시된 메서드 시그니처를 그대로 가진 `Solution` 클래스만 작성하세요.
+        - 테스트용 I/O 코드나 `main` 함수, 불필요한 import를 절대 포함하지 마세요.
+        - **Java**: `Stack` 대신 `ArrayDeque`를 사용하고, 성능을 위해 래퍼 클래스(`Integer[]`) 대신 원시 타입(`int[]`)을 우선하세요.
+        - **C++**: O(1) 조회를 위해 `std::map` 대신 `std::unordered_map` / `std::unordered_set`을 활용하세요.
+
+        ## 4단계 — 최종 출력 형식 규칙
+        - **주석 절대 금지**: 인라인 주석, 블록 주석, docstring 등 어떠한 형태의 설명도 코드 내에 쓰지 마세요.
+        - 오직 실행 가능한 단일 코드 블록(```)만을 출력해야 합니다. 코드 블록 외부의 부연 설명도 생략하세요.
+
         """
     }
 
