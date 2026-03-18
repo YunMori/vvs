@@ -448,6 +448,9 @@ final class ClaudeAPIClient: @unchecked Sendable {
         - Java standalone: use BufferedReader + StringTokenizer + StringBuilder
         - C++ standalone: add ios_base::sync_with_stdio(false); cin.tie(NULL);
 
+        ## Code Style
+        - NO comments of any kind — no inline comments, no block comments, no docstrings. Zero.
+
         ## Output Format
         ```(language)
         (complete solution — no omissions)

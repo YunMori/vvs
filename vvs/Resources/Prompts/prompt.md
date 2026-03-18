@@ -43,6 +43,10 @@ Look at the image to determine the problem format and choose the appropriate cod
   - **Java**: Prefer ArrayDeque over Stack, use int[] over Integer[] for performance
   - **C++**: Use unordered_map/unordered_set for O(1) average lookups
 
+## Code Style
+
+- **NO comments** of any kind — no inline comments, no block comments, no docstrings. Zero.
+
 ## Output Format
 
 **Answer code** — place the complete solution inside a single code block:
