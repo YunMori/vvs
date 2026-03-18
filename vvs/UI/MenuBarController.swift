@@ -42,7 +42,6 @@ final class MenuBarController: NSObject {
     private var statusItem: NSStatusItem!
     private var currentState: MenuBarState = .idle
     private var selectedLanguage: SolveLanguage = .python
-    private var selectedPlatform: Platform = .baekjoon
 
     /// 현재 생성 작업의 Task (취소 가능)
     private var currentTask: Task<Void, Never>?
@@ -95,12 +94,6 @@ final class MenuBarController: NSObject {
         if let langRaw = UserDefaults.standard.string(forKey: AppSettings.defaultLanguage),
            let lang = SolveLanguage(rawValue: langRaw) {
             selectedLanguage = lang
-        }
-
-        if let platformRaw = UserDefaults.standard.string(forKey: AppSettings.selectedPlatform),
-           let platform = Platform(rawValue: platformRaw),
-           platform == .baekjoon || platform == .leetcode {
-            selectedPlatform = platform
         }
     }
 
@@ -181,32 +174,6 @@ final class MenuBarController: NSObject {
 
         languageItem.submenu = languageMenu
         menu.addItem(languageItem)
-
-        // 플랫폼 선택 서브메뉴
-        let platformItem = NSMenuItem(title: "플랫폼", action: nil, keyEquivalent: "")
-        let platformMenu = NSMenu()
-
-        let selectablePlatforms: [(title: String, platform: Platform)] = [
-            ("백준", .baekjoon),
-            ("LeetCode", .leetcode),
-        ]
-
-        for entry in selectablePlatforms {
-            let item = NSMenuItem(
-                title: entry.title,
-                action: #selector(selectPlatform(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = entry.platform
-            if selectedPlatform == entry.platform {
-                item.state = .on
-            }
-            platformMenu.addItem(item)
-        }
-
-        platformItem.submenu = platformMenu
-        menu.addItem(platformItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -477,8 +444,6 @@ final class MenuBarController: NSObject {
 
     /// 선택된 창에 대해 전체 파이프라인을 실행한다.
     private func runPipeline(for window: SCWindow) {
-        let platform = selectedPlatform
-
         currentTask = Task { [weak self] in
             guard let self = self else { return }
             do {
@@ -488,12 +453,7 @@ final class MenuBarController: NSObject {
 
                 // Step 2: Claude Vision으로 직접 전송 (OCR 단계 제거)
                 self.updateState(.generating)
-
-                if platform == .vdi {
-                    await self.runVisionWithFloatingResult(image: image, platform: platform)
-                } else {
-                    await self.runVisionWithClipboard(image: image, platform: platform)
-                }
+                await self.runVisionWithClipboard(image: image)
 
             } catch {
                 self.updateState(.error(error.localizedDescription))
@@ -502,38 +462,15 @@ final class MenuBarController: NSObject {
         }
     }
 
-    /// VDI 모드: Claude Vision API로 이미지를 직접 전송하고 FloatingResult에 스트리밍 표시한다.
-    private func runVisionWithFloatingResult(image: CGImage, platform: Platform) async {
-        let panel = getOrCreateFloatingResultPanel()
-        await MainActor.run { panel.beginStreaming(language: selectedLanguage) }
-
+    /// Claude Vision API로 이미지를 직접 전송하고 클립보드에 복사한다.
+    private func runVisionWithClipboard(image: CGImage) async {
         var fullText = ""
         do {
-            for try await chunk in ClaudeAPIClient.shared.generateSolutionFromImage(image, platform: platform, language: selectedLanguage) {
-                fullText += chunk
-                await MainActor.run { panel.appendStreamingText(chunk, language: self.selectedLanguage) }
-            }
-            let (code, explanation) = ResponseParser.parse(fullText)
-            let solution = SolutionModel(code: code, language: selectedLanguage, explanation: explanation, problem: makePlaceholderProblem(platform: platform))
-            self.lastSolution = solution
-            await MainActor.run { panel.showResult(solution); self.saveToHistory(solution: solution) }
-            self.updateState(.done)
-            await self.resetStateAfterDelay()
-        } catch {
-            self.updateState(.error(error.localizedDescription))
-            await self.resetStateAfterDelay()
-        }
-    }
-
-    /// 브라우저 모드: Claude Vision API로 이미지를 직접 전송하고 클립보드에 복사한다.
-    private func runVisionWithClipboard(image: CGImage, platform: Platform) async {
-        var fullText = ""
-        do {
-            for try await chunk in ClaudeAPIClient.shared.generateSolutionFromImage(image, platform: platform, language: selectedLanguage) {
+            for try await chunk in ClaudeAPIClient.shared.generateSolutionFromImage(image, language: selectedLanguage) {
                 fullText += chunk
             }
             let (code, explanation) = ResponseParser.parse(fullText)
-            let solution = SolutionModel(code: code, language: selectedLanguage, explanation: explanation, problem: makePlaceholderProblem(platform: platform))
+            let solution = SolutionModel(code: code, language: selectedLanguage, explanation: explanation, problem: makePlaceholderProblem())
             self.lastSolution = solution
             await MainActor.run {
                 InputController.shared.copyToClipboard(solution.code)
@@ -552,7 +489,6 @@ final class MenuBarController: NSObject {
 
     /// 창을 캡처해 세션에 추가하고 CaptureActionBar를 표시한다.
     private func addCaptureAndShowActionBar(window: SCWindow) {
-        let platform = selectedPlatform
         currentTask = Task { [weak self] in
             guard let self = self else { return }
             do {
@@ -571,7 +507,7 @@ final class MenuBarController: NSObject {
 
                 await MainActor.run {
                     self.updateState(.idle)
-                    self.showCaptureActionBar(platform: platform)
+                    self.showCaptureActionBar()
                 }
             } catch {
                 self.updateState(.error(error.localizedDescription))
@@ -581,7 +517,7 @@ final class MenuBarController: NSObject {
     }
 
     /// CaptureActionBar를 표시한다.
-    private func showCaptureActionBar(platform: Platform) {
+    private func showCaptureActionBar() {
         captureActionBar?.close()
 
         captureActionBar = CaptureActionBar(
@@ -597,7 +533,7 @@ final class MenuBarController: NSObject {
                 guard let self else { return }
                 self.captureActionBar?.close()
                 self.captureActionBar = nil
-                self.runMultiCapturePipeline(platform: platform)
+                self.runMultiCapturePipeline()
             },
             onCancel: { [weak self] in
                 guard let self else { return }
@@ -611,7 +547,7 @@ final class MenuBarController: NSObject {
     }
 
     /// 세션에 누적된 이미지로 전체 파이프라인을 실행한다.
-    private func runMultiCapturePipeline(platform: Platform) {
+    private func runMultiCapturePipeline() {
         currentTask?.cancel()
         let language = selectedLanguage
         currentTask = Task { [weak self] in
@@ -620,7 +556,7 @@ final class MenuBarController: NSObject {
 
             var fullText = ""
             do {
-                for try await chunk in CaptureSessionManager.shared.solve(platform: platform, language: language) {
+                for try await chunk in CaptureSessionManager.shared.solve(language: language) {
                     guard !Task.isCancelled else { break }
                     fullText += chunk
                 }
@@ -630,7 +566,7 @@ final class MenuBarController: NSObject {
                     code: code,
                     language: language,
                     explanation: explanation,
-                    problem: makePlaceholderProblem(platform: platform)
+                    problem: makePlaceholderProblem()
                 )
                 self.lastSolution = solution
 
@@ -695,15 +631,6 @@ final class MenuBarController: NSObject {
         buildMenu()
     }
 
-    // MARK: - 플랫폼 선택
-
-    @objc private func selectPlatform(_ sender: NSMenuItem) {
-        guard let platform = sender.representedObject as? Platform else { return }
-        selectedPlatform = platform
-        UserDefaults.standard.set(platform.rawValue, forKey: AppSettings.selectedPlatform)
-        buildMenu()
-    }
-
     // MARK: - 설정
 
     @objc private func toggleDockVisibility() {
@@ -751,7 +678,7 @@ final class MenuBarController: NSObject {
     private func saveToHistory(solution: SolutionModel) {
         HistoryManager.shared.save(
             title: solution.problem.title,
-            platform: solution.problem.platform.rawValue,
+            platform: "",
             language: solution.language.rawValue,
             code: solution.code
         )
@@ -797,8 +724,8 @@ final class MenuBarController: NSObject {
     }
 
     /// Vision 모드에서 SolutionModel 생성을 위한 placeholder ProblemModel.
-    private func makePlaceholderProblem(platform: Platform) -> ProblemModel {
-        ProblemModel(title: "Vision 캡처", description: "", inputCondition: "", outputCondition: "", examples: [], platform: platform)
+    private func makePlaceholderProblem() -> ProblemModel {
+        ProblemModel(title: "Vision 캡처", description: "", inputCondition: "", outputCondition: "", examples: [])
     }
 
     /// Claude 응답에서 코드와 설명을 추출하여 SolutionModel을 생성한다.

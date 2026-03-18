@@ -172,29 +172,14 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func platformBadge(_ platform: String) -> some View {
-        let (color, label) = platformInfo(platform)
-
-        Text(label)
+        Text("코드")
             .font(.system(size: 10, weight: .bold))
             .foregroundColor(.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(color)
+            .background(Color.accentColor)
             .cornerRadius(4)
             .frame(width: 50)
-    }
-
-    private func platformInfo(_ platform: String) -> (Color, String) {
-        switch platform.lowercased() {
-        case "baekjoon":
-            return (Color.blue, "BOJ")
-        case "leetcode":
-            return (Color.orange, "LC")
-        case "vdi":
-            return (Color.purple, "VDI")
-        default:
-            return (Color.gray, "ETC")
-        }
     }
 
     // MARK: - Actions

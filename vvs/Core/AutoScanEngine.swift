@@ -61,8 +61,6 @@ final class AutoScanEngine {
             return
         }
 
-        let platformRaw = UserDefaults.standard.string(forKey: AppSettings.selectedPlatform) ?? Platform.baekjoon.rawValue
-        let platform = Platform(rawValue: platformRaw) ?? .baekjoon
         let language: SolveLanguage
         if let langRaw = UserDefaults.standard.string(forKey: AppSettings.defaultLanguage),
            let lang = SolveLanguage(rawValue: langRaw) {
@@ -73,7 +71,7 @@ final class AutoScanEngine {
 
         do {
             var fullText = ""
-            for try await chunk in CaptureSessionManager.shared.solve(platform: platform, language: language) {
+            for try await chunk in CaptureSessionManager.shared.solve(language: language) {
                 fullText += chunk
             }
 
@@ -86,7 +84,7 @@ final class AutoScanEngine {
             InputController.shared.copyToClipboard(code)
             HistoryManager.shared.save(
                 title: "Vision 캡처 (\(CaptureSessionManager.shared.count)장)",
-                platform: platform.rawValue,
+                platform: "",
                 language: language.rawValue,
                 code: code
             )
@@ -108,8 +106,6 @@ final class AutoScanEngine {
             guard let targetWindow = findTargetWindow(in: windows, info: lastWindow) else { return }
             guard KeychainManager.shared.hasAPIKey else { return }
 
-            let platformRaw = UserDefaults.standard.string(forKey: AppSettings.selectedPlatform) ?? Platform.baekjoon.rawValue
-            let platform = Platform(rawValue: platformRaw) ?? .baekjoon
             let language: SolveLanguage
             if let langRaw = UserDefaults.standard.string(forKey: AppSettings.defaultLanguage),
                let lang = SolveLanguage(rawValue: langRaw) {
@@ -121,7 +117,7 @@ final class AutoScanEngine {
             let image = try await CaptureManager.shared.captureWindow(targetWindow)
 
             var fullText = ""
-            for try await chunk in ClaudeAPIClient.shared.generateSolutionFromImage(image, platform: platform, language: language) {
+            for try await chunk in ClaudeAPIClient.shared.generateSolutionFromImage(image, language: language) {
                 fullText += chunk
             }
 
@@ -131,7 +127,7 @@ final class AutoScanEngine {
             InputController.shared.copyToClipboard(code)
             HistoryManager.shared.save(
                 title: "Vision 캡처",
-                platform: platform.rawValue,
+                platform: "",
                 language: language.rawValue,
                 code: code
             )

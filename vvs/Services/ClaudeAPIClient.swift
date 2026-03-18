@@ -140,12 +140,10 @@ final class ClaudeAPIClient: @unchecked Sendable {
     /// 이미지를 Claude Vision API에 직접 전송하여 풀이 코드를 스트리밍 생성한다.
     /// - Parameters:
     ///   - image: 캡처한 화면 이미지
-    ///   - platform: 문제 플랫폼 (백준/LeetCode)
     ///   - language: 풀이 언어
     /// - Returns: 텍스트 청크를 순차적으로 방출하는 AsyncThrowingStream
     func generateSolutionFromImage(
         _ image: CGImage,
-        platform: Platform,
         language: SolveLanguage
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
@@ -158,9 +156,9 @@ final class ClaudeAPIClient: @unchecked Sendable {
                         throw ClaudeAPIError.apiError("이미지 인코딩 실패")
                     }
 
-                    let systemPrompt = loadPromptTemplate(for: platform)
+                    let systemPrompt = loadPromptTemplate()
                     let userText = """
-                    위 이미지는 \(platform == .leetcode ? "LeetCode" : "백준") 코딩 문제 화면입니다.
+                    위 이미지는 코딩 문제 화면입니다.
                     풀이 언어: \(language.rawValue)
 
                     이미지에서 문제를 직접 읽고 풀이 코드를 작성해주세요.
@@ -249,12 +247,10 @@ final class ClaudeAPIClient: @unchecked Sendable {
     /// 이미지는 순서대로 한 문제의 연속된 화면으로 처리된다.
     /// - Parameters:
     ///   - images: 순서대로 누적된 캡처 이미지 배열 (최대 5장)
-    ///   - platform: 문제 플랫폼
     ///   - language: 풀이 언어
     /// - Returns: 텍스트 청크를 순차적으로 방출하는 AsyncThrowingStream
     func generateSolutionFromImages(
         _ images: [CGImage],
-        platform: Platform,
         language: SolveLanguage
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
@@ -280,9 +276,9 @@ final class ClaudeAPIClient: @unchecked Sendable {
                         ])
                     }
 
-                    let systemPrompt = self.loadPromptTemplate(for: platform)
+                    let systemPrompt = self.loadPromptTemplate()
                     let userText = """
-                    위 \(images.count)장의 이미지는 \(platform == .leetcode ? "LeetCode" : "백준") 코딩 문제의 연속된 화면입니다.
+                    위 \(images.count)장의 이미지는 코딩 문제의 연속된 화면입니다.
                     풀이 언어: \(language.rawValue)
 
                     이미지를 순서대로 읽고 전체 문제를 파악하여 풀이 코드를 작성해주세요.
@@ -381,12 +377,11 @@ final class ClaudeAPIClient: @unchecked Sendable {
     // MARK: - 프롬프트 빌드
 
     private func buildPrompt(for problem: ProblemModel, language: SolveLanguage) -> String {
-        let platformPrompt = loadPromptTemplate(for: problem.platform)
+        let platformPrompt = loadPromptTemplate()
 
         var prompt = platformPrompt
         prompt += "\n\n## 문제 정보\n"
         prompt += "- 제목: \(problem.title)\n"
-        prompt += "- 플랫폼: \(problem.platform.rawValue)\n"
         prompt += "- 풀이 언어: \(language.rawValue)\n\n"
         prompt += "## 문제 설명\n\(problem.description)\n\n"
 
@@ -425,16 +420,16 @@ final class ClaudeAPIClient: @unchecked Sendable {
 
     // MARK: - 프롬프트 템플릿 로드
 
-    func loadPromptTemplate(for platform: Platform) -> String {
+    func loadPromptTemplate() -> String {
         guard let url = Bundle.main.url(forResource: "prompt", withExtension: "md", subdirectory: "Prompts"),
               let content = try? String(contentsOf: url, encoding: .utf8)
         else {
-            return defaultPrompt(for: platform) // 번들 로드 실패 시 인라인 fallback
+            return defaultPrompt() // 번들 로드 실패 시 인라인 fallback
         }
         return content
     }
 
-    private func defaultPrompt(for platform: Platform) -> String {
+    private func defaultPrompt() -> String {
         // prompt.md 번들 로드 실패 시 사용하는 인라인 fallback
         return """
         You are a Competitive Programming Grandmaster. Solve the coding problem shown in the image.
@@ -446,8 +441,12 @@ final class ClaudeAPIClient: @unchecked Sendable {
         4. Verify against all provided examples before writing code.
 
         ## Code Rules
-        - If Baekjoon: complete standalone program, stdin/stdout, Python 3.7 uses input() and print() ONLY (no sys or other I/O), Java uses BufferedReader, C++ uses ios_base::sync_with_stdio(false)
-        - If LeetCode: Solution class only, exact method signature, no main function
+        - Look at the image to determine the problem format:
+          - If the problem uses stdin/stdout (e.g. Baekjoon/BOJ style): write a complete standalone program with main entry point
+          - If the problem uses a Solution class with a method signature (e.g. LeetCode style): write only the Solution class with the exact method signature, no main function
+        - Python 3.7: use input() and print() ONLY for standalone programs (no sys or other I/O)
+        - Java standalone: use BufferedReader + StringTokenizer + StringBuilder
+        - C++ standalone: add ios_base::sync_with_stdio(false); cin.tie(NULL);
 
         ## Output Format
         ```(language)

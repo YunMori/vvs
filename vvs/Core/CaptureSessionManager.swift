@@ -40,16 +40,16 @@ final class CaptureSessionManager {
 
     /// 누적된 이미지로 Claude Vision API를 호출하는 스트림을 반환한다.
     /// 1장이면 기존 generateSolutionFromImage(), 2장 이상이면 generateSolutionFromImages()를 사용한다.
-    func solve(platform: Platform, language: SolveLanguage) -> AsyncThrowingStream<String, Error> {
+    func solve(language: SolveLanguage) -> AsyncThrowingStream<String, Error> {
         let images = capturedImages
         guard !images.isEmpty else {
             return AsyncThrowingStream { $0.finish(throwing: CaptureSessionError.noImagesAvailable) }
         }
         state = .solving
         if images.count == 1 {
-            return ClaudeAPIClient.shared.generateSolutionFromImage(images[0], platform: platform, language: language)
+            return ClaudeAPIClient.shared.generateSolutionFromImage(images[0], language: language)
         } else {
-            return ClaudeAPIClient.shared.generateSolutionFromImages(images, platform: platform, language: language)
+            return ClaudeAPIClient.shared.generateSolutionFromImages(images, language: language)
         }
     }
 

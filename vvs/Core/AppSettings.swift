@@ -3,7 +3,6 @@ import Foundation
 /// UserDefaults 키 상수 모음
 enum AppSettings {
     static let defaultLanguage = "defaultLanguage"
-    static let selectedPlatform = "selectedPlatform"
     static let typingDelay = "typingDelay"
     static let floatingResultX = "FloatingResultX"
     static let floatingResultY = "FloatingResultY"

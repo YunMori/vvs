@@ -1,14 +1,5 @@
 import Foundation
 
-// MARK: - Platform Detection
-
-enum Platform: String, Sendable {
-    case baekjoon
-    case leetcode
-    case vdi
-    case unknown
-}
-
 // MARK: - Solve Language
 
 enum SolveLanguage: String, CaseIterable, Sendable {
@@ -34,7 +25,6 @@ struct ProblemModel: Sendable {
     let inputCondition: String
     let outputCondition: String
     let examples: [Example]
-    let platform: Platform
 
     struct Example: Sendable {
         let input: String

@@ -114,18 +114,6 @@ final class CaptureManager: @unchecked Sendable {
         }
     }
 
-    /// 코딩 플랫폼이 감지되는 창을 자동으로 찾아 캡처한다.
-    /// - Returns: 캡처된 이미지와 감지된 플랫폼 정보의 튜플
-    func captureDetectedPlatformWindow() async throws -> (image: CGImage, platform: Platform, window: SCWindow) {
-        let windows = try await getAvailableWindows()
-
-        guard let match = PlatformDetector.detectBestMatch(from: windows) else {
-            throw CaptureError.noPlatformWindowFound
-        }
-
-        let image = try await captureWindow(match.window)
-        return (image, match.platform, match.window)
-    }
 
     // MARK: - macOS 13 Legacy Capture
 
@@ -193,15 +181,12 @@ private final class LegacyCaptureOutput: NSObject, SCStreamOutput {
 
 enum CaptureError: LocalizedError {
     case permissionDenied
-    case noPlatformWindowFound
     case captureFailure(String)
 
     var errorDescription: String? {
         switch self {
         case .permissionDenied:
             return "화면 캡처 권한이 없습니다. 시스템 설정에서 권한을 허용해주세요."
-        case .noPlatformWindowFound:
-            return "백준 또는 LeetCode 창을 찾을 수 없습니다. 브라우저에서 문제 페이지를 열어주세요."
         case .captureFailure(let detail):
             return "화면 캡처 실패: \(detail)"
         }

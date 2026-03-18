@@ -184,18 +184,6 @@ struct WindowPickerView: View {
 
                 Spacer()
 
-                // 플랫폼 감지 배지
-                let platform = PlatformDetector.detect(from: window)
-                if platform != .unknown {
-                    Text(platformBadge(platform))
-                        .font(.system(size: 10, weight: .medium))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(platformColor(platform).opacity(0.2))
-                        .foregroundColor(platformColor(platform))
-                        .clipShape(Capsule())
-                }
-
                 if isLastSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.accentColor)
@@ -247,24 +235,6 @@ struct WindowPickerView: View {
         let titleMatch = window.title == savedTitle
 
         return bundleMatch && titleMatch
-    }
-
-    private func platformBadge(_ platform: Platform) -> String {
-        switch platform {
-        case .baekjoon: return "백준"
-        case .leetcode: return "LeetCode"
-        case .vdi: return "VDI"
-        case .unknown: return ""
-        }
-    }
-
-    private func platformColor(_ platform: Platform) -> Color {
-        switch platform {
-        case .baekjoon: return .blue
-        case .leetcode: return .orange
-        case .vdi: return .purple
-        case .unknown: return .gray
-        }
     }
 
     private func loadWindows() async {
