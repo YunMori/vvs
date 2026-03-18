@@ -27,104 +27,6 @@ final class ClaudeAPIClient: @unchecked Sendable {
         self.session = URLSession(configuration: config)
     }
 
-    // MARK: - 스트리밍 코드 생성
-
-    /// 문제와 언어를 입력받아 Claude API로 풀이 코드를 스트리밍 생성한다.
-    /// - Parameters:
-    ///   - problem: OCR로 추출한 문제 모델
-    ///   - language: 풀이 언어
-    /// - Returns: 텍스트 청크를 순차적으로 방출하는 AsyncThrowingStream
-    func generateSolution(
-        for problem: ProblemModel,
-        language: SolveLanguage
-    ) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    guard let apiKey = KeychainManager.shared.loadAPIKey() else {
-                        throw ClaudeAPIError.apiKeyNotFound
-                    }
-
-                    let prompt = buildPrompt(for: problem, language: language)
-                    let body = buildRequestBody(prompt: prompt)
-                    let bodyData = try JSONSerialization.data(withJSONObject: body)
-
-                    var request = URLRequest(url: apiURL)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-                    request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-                    request.httpBody = bodyData
-
-                    let (asyncBytes, response) = try await self.session.bytes(for: request)
-
-                    guard let httpResponse = response as? HTTPURLResponse else {
-                        throw ClaudeAPIError.invalidResponse
-                    }
-
-                    guard httpResponse.statusCode == 200 else {
-                        // 에러 바디 읽기
-                        var errorBody = ""
-                        for try await line in asyncBytes.lines {
-                            errorBody += line
-                        }
-                        throw ClaudeAPIError.httpError(
-                            statusCode: httpResponse.statusCode,
-                            body: errorBody
-                        )
-                    }
-
-                    // SSE 스트림 파싱
-                    for try await line in asyncBytes.lines {
-                        guard !Task.isCancelled else {
-                            continuation.finish()
-                            return
-                        }
-
-                        // SSE 형식: "data: {...}"
-                        guard line.hasPrefix("data: ") else { continue }
-                        let jsonString = String(line.dropFirst(6))
-
-                        // [DONE] 시그널 또는 빈 데이터 무시
-                        guard jsonString != "[DONE]",
-                              let jsonData = jsonString.data(using: .utf8),
-                              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                        else { continue }
-
-                        let eventType = json["type"] as? String ?? ""
-
-                        switch eventType {
-                        case "content_block_delta":
-                            if let delta = json["delta"] as? [String: Any],
-                               let text = delta["text"] as? String {
-                                continuation.yield(text)
-                            }
-
-                        case "message_stop":
-                            continuation.finish()
-                            return
-
-                        case "error":
-                            if let error = json["error"] as? [String: Any],
-                               let message = error["message"] as? String {
-                                throw ClaudeAPIError.apiError(message)
-                            }
-
-                        default:
-                            // ping, message_start, content_block_start 등 무시
-                            break
-                        }
-                    }
-
-                    continuation.finish()
-
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-        }
-    }
-
     // MARK: - CGImage → base64 PNG 변환
 
     private func encodeImageToBase64(_ image: CGImage) -> String? {
@@ -352,72 +254,6 @@ final class ClaudeAPIClient: @unchecked Sendable {
         }
     }
 
-    // MARK: - 비스트리밍 (간편) 호출
-
-    /// 스트리밍 없이 전체 응답을 한번에 받는다.
-    func generateSolutionFull(
-        for problem: ProblemModel,
-        language: SolveLanguage
-    ) async throws -> SolutionModel {
-        var fullText = ""
-        for try await chunk in generateSolution(for: problem, language: language) {
-            fullText += chunk
-        }
-
-        let (code, explanation) = parseResponse(fullText)
-
-        return SolutionModel(
-            code: code,
-            language: language,
-            explanation: explanation,
-            problem: problem
-        )
-    }
-
-    // MARK: - 프롬프트 빌드
-
-    private func buildPrompt(for problem: ProblemModel, language: SolveLanguage) -> String {
-        let platformPrompt = loadPromptTemplate()
-
-        var prompt = platformPrompt
-        prompt += "\n\n## 문제 정보\n"
-        prompt += "- 제목: \(problem.title)\n"
-        prompt += "- 풀이 언어: \(language.rawValue)\n\n"
-        prompt += "## 문제 설명\n\(problem.description)\n\n"
-
-        if !problem.inputCondition.isEmpty {
-            prompt += "## 입력 조건\n\(problem.inputCondition)\n\n"
-        }
-        if !problem.outputCondition.isEmpty {
-            prompt += "## 출력 조건\n\(problem.outputCondition)\n\n"
-        }
-
-        if !problem.examples.isEmpty {
-            prompt += "## 예제\n"
-            for (i, example) in problem.examples.enumerated() {
-                prompt += "### 예제 \(i + 1)\n"
-                prompt += "입력:\n```\n\(example.input)\n```\n"
-                prompt += "출력:\n```\n\(example.output)\n```\n\n"
-            }
-        }
-
-        return prompt
-    }
-
-    private func buildRequestBody(prompt: String) -> [String: Any] {
-        [
-            "model": modelID,
-            "max_tokens": maxTokens,
-            "stream": true,
-            "messages": [
-                [
-                    "role": "user",
-                    "content": prompt
-                ]
-            ]
-        ]
-    }
-
     // MARK: - 프롬프트 템플릿 로드
 
     func loadPromptTemplate() -> String {
@@ -459,12 +295,6 @@ final class ClaudeAPIClient: @unchecked Sendable {
         """
     }
 
-    // MARK: - 응답 파싱
-
-    /// Claude 응답에서 코드 블록과 설명을 분리한다.
-    private func parseResponse(_ text: String) -> (code: String, explanation: String) {
-        return ResponseParser.parse(text)
-    }
 }
 
 // MARK: - Errors
