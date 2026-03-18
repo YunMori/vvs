@@ -63,6 +63,9 @@ final class MenuBarController: NSObject {
     /// 전역 단축키 핫키 모니터
     private var globalMonitor: Any?
 
+    /// Hide 모드 진입 전 activationPolicy 저장
+    private var savedActivationPolicy: NSApplication.ActivationPolicy = .accessory
+
     /// 절전 해제 감지용
     private var wakeObserver: NSObjectProtocol?
 
@@ -346,6 +349,9 @@ final class MenuBarController: NSObject {
         captureActionBar?.close()
         captureActionBar = nil
 
+        // 진입 전 상태 저장
+        savedActivationPolicy = NSApp.activationPolicy()
+
         // 앱을 Dock/Cmd+Tab/Mission Control에서 완전히 숨기기
         NSApp.setActivationPolicy(.prohibited)
 
@@ -358,8 +364,8 @@ final class MenuBarController: NSObject {
         // 상태 복원
         HideModeManager.shared.currentState = .normal
 
-        // 앱을 accessory 모드로 복원 (메뉴바 앱)
-        NSApp.setActivationPolicy(.accessory)
+        // 진입 전 상태로 복원
+        NSApp.setActivationPolicy(savedActivationPolicy)
 
         // StatusItem 재생성
         setupStatusItem()
