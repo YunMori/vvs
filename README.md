@@ -131,7 +131,6 @@ main.swift
 | 데드 코드 제거 | 미사용 파일 3개 삭제 (OCRProcessor, Persistence, SolverEngine) | 파일 3개 삭제 |
 | 데드 코드 제거 | 미사용 메서드·케이스·상수 5개 제거 | -236줄 |
 | 데드 코드 제거 | 텍스트 파이프라인 전면 삭제 (Vision API 직접 전송으로 대체) | -308줄 |
-| **데드 코드 합계** | | **-544줄** |
 | 구조 개선 | SSE 파싱 중복 코드 → `executeStreamingRequest()` 단일 메서드로 통합 | -70줄 |
 | 버그 수정 | Human-like Typing 미적용 버그 (UserDefaults 키 독립화) | — |
 | 버그 수정 | IDE 이중 들여쓰기 버그 (`ideModeEnabled` 기본값 `true`로 수정) | — |
