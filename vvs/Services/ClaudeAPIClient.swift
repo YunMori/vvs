@@ -92,50 +92,7 @@ final class ClaudeAPIClient: @unchecked Sendable {
                         ]
                     ]
 
-                    let bodyData = try JSONSerialization.data(withJSONObject: body)
-                    var request = URLRequest(url: apiURL)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-                    request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-                    request.httpBody = bodyData
-
-                    let (asyncBytes, response) = try await self.session.bytes(for: request)
-                    guard let httpResponse = response as? HTTPURLResponse else {
-                        throw ClaudeAPIError.invalidResponse
-                    }
-                    guard httpResponse.statusCode == 200 else {
-                        var errorBody = ""
-                        for try await line in asyncBytes.lines { errorBody += line }
-                        throw ClaudeAPIError.httpError(statusCode: httpResponse.statusCode, body: errorBody)
-                    }
-
-                    for try await line in asyncBytes.lines {
-                        guard !Task.isCancelled else { continuation.finish(); return }
-                        guard line.hasPrefix("data: ") else { continue }
-                        let jsonString = String(line.dropFirst(6))
-                        guard jsonString != "[DONE]",
-                              let jsonData = jsonString.data(using: .utf8),
-                              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                        else { continue }
-
-                        switch json["type"] as? String ?? "" {
-                        case "content_block_delta":
-                            if let delta = json["delta"] as? [String: Any],
-                               let text = delta["text"] as? String {
-                                continuation.yield(text)
-                            }
-                        case "message_stop":
-                            continuation.finish(); return
-                        case "error":
-                            if let error = json["error"] as? [String: Any],
-                               let message = error["message"] as? String {
-                                throw ClaudeAPIError.apiError(message)
-                            }
-                        default: break
-                        }
-                    }
-                    continuation.finish()
+                    try await self.executeStreamingRequest(body: body, apiKey: apiKey, continuation: continuation)
                 } catch {
                     continuation.finish(throwing: error)
                 }
@@ -203,55 +160,66 @@ final class ClaudeAPIClient: @unchecked Sendable {
                         ]
                     ]
 
-                    let bodyData = try JSONSerialization.data(withJSONObject: body)
-                    var request = URLRequest(url: self.apiURL)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-                    request.setValue(self.apiVersion, forHTTPHeaderField: "anthropic-version")
-                    request.httpBody = bodyData
-
-                    let (asyncBytes, response) = try await self.session.bytes(for: request)
-                    guard let httpResponse = response as? HTTPURLResponse else {
-                        throw ClaudeAPIError.invalidResponse
-                    }
-                    guard httpResponse.statusCode == 200 else {
-                        var errorBody = ""
-                        for try await line in asyncBytes.lines { errorBody += line }
-                        throw ClaudeAPIError.httpError(statusCode: httpResponse.statusCode, body: errorBody)
-                    }
-
-                    for try await line in asyncBytes.lines {
-                        guard !Task.isCancelled else { continuation.finish(); return }
-                        guard line.hasPrefix("data: ") else { continue }
-                        let jsonString = String(line.dropFirst(6))
-                        guard jsonString != "[DONE]",
-                              let jsonData = jsonString.data(using: .utf8),
-                              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                        else { continue }
-
-                        switch json["type"] as? String ?? "" {
-                        case "content_block_delta":
-                            if let delta = json["delta"] as? [String: Any],
-                               let text = delta["text"] as? String {
-                                continuation.yield(text)
-                            }
-                        case "message_stop":
-                            continuation.finish(); return
-                        case "error":
-                            if let error = json["error"] as? [String: Any],
-                               let message = error["message"] as? String {
-                                throw ClaudeAPIError.apiError(message)
-                            }
-                        default: break
-                        }
-                    }
-                    continuation.finish()
+                    try await self.executeStreamingRequest(body: body, apiKey: apiKey, continuation: continuation)
                 } catch {
                     continuation.finish(throwing: error)
                 }
             }
         }
+    }
+
+    // MARK: - SSE 스트리밍 공통 처리
+
+    /// API 요청을 실행하고 SSE 스트림을 파싱하여 텍스트 청크를 continuation으로 전달한다.
+    private func executeStreamingRequest(
+        body: [String: Any],
+        apiKey: String,
+        continuation: AsyncThrowingStream<String, Error>.Continuation
+    ) async throws {
+        let bodyData = try JSONSerialization.data(withJSONObject: body)
+        var request = URLRequest(url: apiURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
+        request.httpBody = bodyData
+
+        let (asyncBytes, response) = try await session.bytes(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ClaudeAPIError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            var errorBody = ""
+            for try await line in asyncBytes.lines { errorBody += line }
+            throw ClaudeAPIError.httpError(statusCode: httpResponse.statusCode, body: errorBody)
+        }
+
+        for try await line in asyncBytes.lines {
+            guard !Task.isCancelled else { continuation.finish(); return }
+            guard line.hasPrefix("data: ") else { continue }
+            let jsonString = String(line.dropFirst(6))
+            guard jsonString != "[DONE]",
+                  let jsonData = jsonString.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+            else { continue }
+
+            switch json["type"] as? String ?? "" {
+            case "content_block_delta":
+                if let delta = json["delta"] as? [String: Any],
+                   let text = delta["text"] as? String {
+                    continuation.yield(text)
+                }
+            case "message_stop":
+                continuation.finish(); return
+            case "error":
+                if let error = json["error"] as? [String: Any],
+                   let message = error["message"] as? String {
+                    throw ClaudeAPIError.apiError(message)
+                }
+            default: break
+            }
+        }
+        continuation.finish()
     }
 
     // MARK: - 프롬프트 템플릿 로드
