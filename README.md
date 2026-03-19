@@ -124,7 +124,7 @@ main.swift
 
 ---
 
-## 최적화 현황
+## 패치 현황
 
 | 카테고리 | 내용 | 결과 |
 |---------|------|------|
@@ -286,7 +286,7 @@ main.swift
 
 ---
 
-## Optimization Log
+## Patch Log
 
 | Category | Description | Result |
 |----------|-------------|--------|
