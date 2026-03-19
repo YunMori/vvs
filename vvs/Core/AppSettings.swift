@@ -12,9 +12,6 @@ enum AppSettings {
     static let floatingResultWidth = "FloatingResultWidth"
     static let floatingResultHeight = "FloatingResultHeight"
 
-    /// 다중 캡처 즉시 풀이 단축키 (Hide 모드: Cmd+Shift+Option+S)
-    static let multiCaptureSolveKeyCode = "multiCaptureSolveKeyCode"
-
     enum Shortcut {
         static let prefix = "Shortcut_"
         static let captureModifiers = prefix + "captureModifiers"

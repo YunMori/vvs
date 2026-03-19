@@ -448,26 +448,6 @@ final class MenuBarController: NSObject {
         windowPickerPanel?.showCentered()
     }
 
-    /// 선택된 창에 대해 전체 파이프라인을 실행한다.
-    private func runPipeline(for window: SCWindow) {
-        currentTask = Task { [weak self] in
-            guard let self = self else { return }
-            do {
-                // Step 1: 화면 캡처
-                self.updateState(.capturing)
-                let image = try await CaptureManager.shared.captureWindow(window)
-
-                // Step 2: Claude Vision으로 직접 전송 (OCR 단계 제거)
-                self.updateState(.generating)
-                await self.runVisionWithClipboard(image: image)
-
-            } catch {
-                self.updateState(.error(error.localizedDescription))
-                await self.resetStateAfterDelay()
-            }
-        }
-    }
-
     /// Claude Vision API로 이미지를 직접 전송하고 클립보드에 복사한다.
     private func runVisionWithClipboard(image: CGImage) async {
         var fullText = ""
@@ -730,15 +710,6 @@ final class MenuBarController: NSObject {
 
     // MARK: - Helpers
 
-    private func getOrCreateFloatingResultPanel() -> FloatingResultPanel {
-        if let panel = floatingResultPanel {
-            return panel
-        }
-        let panel = FloatingResultPanel()
-        floatingResultPanel = panel
-        return panel
-    }
-
     /// Vision 모드에서 SolutionModel 생성을 위한 placeholder ProblemModel.
     private func makePlaceholderProblem() -> ProblemModel {
         ProblemModel(title: "Vision 캡처", description: "", inputCondition: "", outputCondition: "", examples: [])
@@ -756,16 +727,6 @@ final class MenuBarController: NSObject {
                 .joined(separator: "\n")
         }
         return result
-    }
-
-    /// Claude 응답에서 코드와 설명을 추출하여 SolutionModel을 생성한다.
-    private func buildSolutionFromResponse(
-        _ text: String,
-        language: SolveLanguage,
-        problem: ProblemModel
-    ) -> SolutionModel {
-        let (code, explanation) = ResponseParser.parse(text)
-        return SolutionModel(code: code, language: language, explanation: explanation, problem: problem)
     }
 
     /// 지정 시간 후 idle 상태로 복귀한다.

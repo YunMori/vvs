@@ -165,10 +165,6 @@ final class FloatingResultViewModel: ObservableObject {
         codeTexts[language, default: ""] += text
     }
 
-    func finishStreaming() {
-        isStreaming = false
-    }
-
     func copyCurrentCode() {
         guard let code = codeTexts[currentLanguage], !code.isEmpty else { return }
         InputController.shared.copyToClipboard(code)

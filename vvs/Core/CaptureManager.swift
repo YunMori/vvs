@@ -180,13 +180,10 @@ private final class LegacyCaptureOutput: NSObject, SCStreamOutput {
 // MARK: - Errors
 
 enum CaptureError: LocalizedError {
-    case permissionDenied
     case captureFailure(String)
 
     var errorDescription: String? {
         switch self {
-        case .permissionDenied:
-            return "화면 캡처 권한이 없습니다. 시스템 설정에서 권한을 허용해주세요."
         case .captureFailure(let detail):
             return "화면 캡처 실패: \(detail)"
         }
