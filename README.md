@@ -292,7 +292,6 @@ main.swift
 | Dead code removal | Deleted 3 unused files (OCRProcessor, Persistence, SolverEngine) | 3 files removed |
 | Dead code removal | Removed 5 unused methods / cases / constants | −236 lines |
 | Dead code removal | Removed entire text pipeline (replaced by direct Vision API) | −308 lines |
-| **Dead code total** | | **−544 lines** |
 | Refactor | Deduplicated SSE parsing into single `executeStreamingRequest()` | −70 lines |
 | Bug fix | Human-like Typing not applying (independent UserDefaults key) | — |
 | Bug fix | IDE double indentation (`ideModeEnabled` defaulting to `true`) | — |
