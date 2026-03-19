@@ -4,6 +4,9 @@ import Foundation
 enum AppSettings {
     static let defaultLanguage = "defaultLanguage"
     static let typingDelay = "typingDelay"
+    static let humanLikeTypingEnabled = "humanLikeTypingEnabled"
+    static let ideModeEnabled = "ideModeEnabled"
+    static let typoSimulationEnabled = "typoSimulationEnabled"
     static let floatingResultX = "FloatingResultX"
     static let floatingResultY = "FloatingResultY"
     static let floatingResultWidth = "FloatingResultWidth"

@@ -8,7 +8,7 @@ final class SettingsPanel: NSWindow {
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -62,6 +62,9 @@ struct SettingsView: View {
     @State private var typingDelay: Double = 0.01
     @State private var hasAccessibility: Bool = false
     @State private var saveMessage: String?
+    @State private var humanLikeTypingEnabled: Bool = true
+    @State private var ideModeEnabled: Bool = false
+    @State private var typoSimulationEnabled: Bool = false
 
     var body: some View {
         Form {
@@ -137,12 +140,22 @@ struct SettingsView: View {
 
             Divider()
 
-            // MARK: - 자동 타이핑 딜레이
+            // MARK: - 자동 타이핑 설정
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("자동 타이핑 딜레이")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("자동 타이핑 설정")
                         .font(.headline)
 
+                    // 자연스러운 타이핑 토글
+                    Toggle("자연스러운 타이핑", isOn: $humanLikeTypingEnabled)
+                        .onChange(of: humanLikeTypingEnabled) { _, newValue in
+                            UserDefaults.standard.set(newValue, forKey: AppSettings.humanLikeTypingEnabled)
+                        }
+                    Text("사람처럼 타이핑 속도에 변화를 줍니다. 비활성화 시 아래 딜레이 값이 균일하게 적용됩니다.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    // 딜레이 슬라이더
                     HStack {
                         Slider(value: $typingDelay, in: 0.001...0.1, step: 0.001)
                             .onChange(of: typingDelay) { _, newValue in
@@ -152,8 +165,32 @@ struct SettingsView: View {
                             .font(.system(size: 12, design: .monospaced))
                             .frame(width: 60)
                     }
+                    Text(humanLikeTypingEnabled
+                         ? "자연 타이핑의 기본 속도 기준값입니다."
+                         : "값이 작을수록 빠르게 타이핑됩니다.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
 
-                    Text("값이 작을수록 빠르게 타이핑됩니다. 일부 앱에서는 너무 빠르면 입력이 누락될 수 있습니다.")
+                    Divider()
+
+                    // IDE 자동 들여쓰기 모드 토글
+                    Toggle("IDE 자동 들여쓰기 모드", isOn: $ideModeEnabled)
+                        .onChange(of: ideModeEnabled) { _, newValue in
+                            UserDefaults.standard.set(newValue, forKey: AppSettings.ideModeEnabled)
+                        }
+                    Text("VSCode, Xcode 등에서 이중 들여쓰기를 방지합니다. 탭을 공백으로 변환하고 들여쓰기를 에디터에 위임합니다.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    Divider()
+
+                    // 오타 시뮬레이션 토글
+                    Toggle("오타 시뮬레이션", isOn: $typoSimulationEnabled)
+                        .disabled(!humanLikeTypingEnabled)
+                        .onChange(of: typoSimulationEnabled) { _, newValue in
+                            UserDefaults.standard.set(newValue, forKey: AppSettings.typoSimulationEnabled)
+                        }
+                    Text("드물게 오타를 냈다가 자동 정정합니다. (확률 약 1.2%, 자연스러운 타이핑 활성 시에만 동작)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -264,6 +301,9 @@ struct SettingsView: View {
         typingDelay = saved > 0 ? saved : 0.01
 
         hasAccessibility = InputController.shared.hasAccessibilityPermission
+        humanLikeTypingEnabled = UserDefaults.standard.object(forKey: AppSettings.humanLikeTypingEnabled) as? Bool ?? true
+        ideModeEnabled = UserDefaults.standard.object(forKey: AppSettings.ideModeEnabled) as? Bool ?? true
+        typoSimulationEnabled = UserDefaults.standard.bool(forKey: AppSettings.typoSimulationEnabled)
     }
 
     private func saveAPIKey() {

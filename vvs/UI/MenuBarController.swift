@@ -624,13 +624,17 @@ final class MenuBarController: NSObject {
         }
 
         let typingDelay = UserDefaults.standard.double(forKey: AppSettings.typingDelay)
+        let isHumanLike = UserDefaults.standard.object(forKey: AppSettings.humanLikeTypingEnabled) as? Bool ?? true
+        let ideModeEnabled = UserDefaults.standard.object(forKey: AppSettings.ideModeEnabled) as? Bool ?? true
         let delay = typingDelay > 0 ? typingDelay : 0.01
+
+        let processedCode = preprocessCodeForTyping(solution.code, ideMode: ideModeEnabled)
 
         currentTask = Task {
             // 1.5초 대기 (에디터 포커스 시간)
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             guard !Task.isCancelled else { return }
-            await InputController.shared.typeText(solution.code, delay: delay)
+            await InputController.shared.typeText(processedCode, delay: delay, isHumanLike: isHumanLike)
         }
     }
 
@@ -738,6 +742,20 @@ final class MenuBarController: NSObject {
     /// Vision 모드에서 SolutionModel 생성을 위한 placeholder ProblemModel.
     private func makePlaceholderProblem() -> ProblemModel {
         ProblemModel(title: "Vision 캡처", description: "", inputCondition: "", outputCondition: "", examples: [])
+    }
+
+    /// 자동 타이핑 전 코드 문자열을 전처리한다.
+    /// - 탭 문자를 공백 4개로 변환하여 kVK_Tab 이벤트를 차단한다.
+    /// - ideMode가 true이면 각 줄 앞 공백을 제거하여 IDE 자동 들여쓰기에 위임한다.
+    private func preprocessCodeForTyping(_ code: String, ideMode: Bool) -> String {
+        var result = code.replacingOccurrences(of: "\t", with: "    ")
+        if ideMode {
+            result = result
+                .components(separatedBy: "\n")
+                .map { String($0.drop(while: { $0 == " " })) }
+                .joined(separator: "\n")
+        }
+        return result
     }
 
     /// Claude 응답에서 코드와 설명을 추출하여 SolutionModel을 생성한다.
